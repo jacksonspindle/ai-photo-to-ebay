@@ -24,18 +24,30 @@ export default async function handler(req, res) {
   try {
     const { token, sku, listingData, imageUrls } = req.body
     
+    console.log('📦 eBay inventory request data:', {
+      hasToken: !!token,
+      sku: sku,
+      listingData: listingData,
+      imageUrls: imageUrls
+    })
+    
     if (!token || !sku || !listingData) {
       return res.status(400).json({ error: 'Missing required parameters' })
     }
 
-    // Validate required fields
-    if (!listingData.title || listingData.title.length > 80) {
-      return res.status(400).json({ error: 'Title is required and must be 80 characters or less' })
+    // Validate required fields - be more lenient and log for debugging
+    if (!listingData.title || typeof listingData.title !== 'string') {
+      console.error('Title validation failed:', listingData.title)
+      return res.status(400).json({ error: 'Title is required and must be a string' })
     }
     
-    if (!listingData.description || listingData.description.length > 4000) {
-      return res.status(400).json({ error: 'Description is required and must be 4000 characters or less' })
+    if (!listingData.description || typeof listingData.description !== 'string') {
+      console.error('Description validation failed:', listingData.description)
+      return res.status(400).json({ error: 'Description is required and must be a string' })
     }
+
+    console.log('Title:', listingData.title, 'Length:', listingData.title.length)
+    console.log('Description:', listingData.description, 'Length:', listingData.description.length)
 
     // Ensure we have valid image URLs
     const validImageUrls = Array.isArray(imageUrls) ? imageUrls.filter(url => url && url.startsWith('https://')) : []
