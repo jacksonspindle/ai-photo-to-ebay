@@ -65,6 +65,7 @@ export default async function handler(req, res) {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
         'Content-Language': 'en-US',
+        'Accept-Language': 'en-US',
         'Accept': 'application/json'
       },
       body: JSON.stringify({
