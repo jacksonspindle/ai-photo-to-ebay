@@ -1,10 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { postToEbay } from '../services/ebayService'
+import { isEbayAuthenticated, getEbayAuthUrl } from '../services/ebayAuthService'
 
 export default function ListingPreview({ listingData, isLoading, onUpdate, uploadedImage, uploadedImages = [], showIntegrationButtons = false }) {
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState(listingData || {})
   const [isPostingToEbay, setIsPostingToEbay] = useState(false)
+  const [isEbayConnected, setIsEbayConnected] = useState(false)
+
+  useEffect(() => {
+    // Check eBay authentication status
+    setIsEbayConnected(isEbayAuthenticated())
+  }, [])
 
   const handleEdit = () => {
     setEditData(listingData)
@@ -23,6 +30,12 @@ export default function ListingPreview({ listingData, isLoading, onUpdate, uploa
 
   const handlePostToEbay = async () => {
     try {
+      // Check if authenticated first
+      if (!isEbayConnected) {
+        alert('Please connect your eBay account first by clicking "Connect eBay Account"')
+        return
+      }
+      
       setIsPostingToEbay(true)
       
       // Use the current listing data (either original or edited)
@@ -33,8 +46,31 @@ export default function ListingPreview({ listingData, isLoading, onUpdate, uploa
       
       console.log('✅ Successfully posted to eBay:', result)
       
-      // Optional: Show success feedback to user
-      // You could add a toast notification here
+      // Show different messages based on method used
+      if (result.method === 'api') {
+        // Successfully created via API
+        const message = `🎉 eBay listing created successfully!\n\n` +
+          `Your listing is now live on eBay.\n` +
+          `Listing ID: ${result.listingId}\n\n` +
+          `The listing page will open in a new tab.`
+        
+        alert(message)
+        
+        // Open the listing
+        if (result.listingUrl) {
+          window.open(result.listingUrl, '_blank')
+        }
+      } else if (result.instructions && result.data) {
+        // URL method - suggest connecting eBay account
+        const message = `✅ eBay opened! Title copied to clipboard.\n\n` +
+          `📋 Quick Copy Guide:\n` +
+          `1. Title is already in your clipboard - just paste!\n` +
+          `2. Price: ${result.data.price}\n` +
+          `3. Description: ${result.data.description.substring(0, 100)}...\n\n` +
+          `💡 Connect your eBay account for automatic listing creation!`
+        
+        alert(message)
+      }
       
     } catch (error) {
       console.error('❌ Failed to post to eBay:', error)
@@ -44,6 +80,17 @@ export default function ListingPreview({ listingData, isLoading, onUpdate, uploa
       
     } finally {
       setIsPostingToEbay(false)
+    }
+  }
+
+  const handleConnectEbay = () => {
+    try {
+      const authUrl = getEbayAuthUrl()
+      // Real eBay OAuth flow
+      window.location.href = authUrl
+    } catch (error) {
+      console.error('Failed to get eBay auth URL:', error)
+      alert('Failed to connect to eBay. Please check configuration.')
     }
   }
 
@@ -228,14 +275,30 @@ export default function ListingPreview({ listingData, isLoading, onUpdate, uploa
               </h3>
               
               <div className="grid grid-cols-1 gap-2">
-                {/* eBay Button */}
+                {/* eBay Connect Button (when not authenticated) */}
+                {!isEbayConnected && (
+                  <button
+                    onClick={handleConnectEbay}
+                    className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white text-sm font-medium rounded-xl haptic-medium flex items-center justify-center space-x-2 transition-all duration-200"
+                  >
+                    <span>🔗</span>
+                    <span>Connect eBay Account</span>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </button>
+                )}
+
+                {/* eBay Post Button */}
                 <button
                   onClick={handlePostToEbay}
-                  disabled={isPostingToEbay}
-                  className={`w-full py-2.5 px-4 text-black text-sm font-medium rounded-xl haptic-medium flex items-center justify-center space-x-2 transition-all duration-200 ${
-                    isPostingToEbay 
-                      ? 'bg-yellow-300 cursor-not-allowed' 
-                      : 'bg-yellow-400 hover:bg-yellow-500 active:bg-yellow-600'
+                  disabled={isPostingToEbay || !isEbayConnected}
+                  className={`w-full py-2.5 px-4 text-sm font-medium rounded-xl haptic-medium flex items-center justify-center space-x-2 transition-all duration-200 ${
+                    isEbayConnected
+                      ? isPostingToEbay 
+                        ? 'bg-yellow-300 cursor-not-allowed text-black' 
+                        : 'bg-yellow-400 hover:bg-yellow-500 active:bg-yellow-600 text-black'
+                      : 'bg-gray-300 cursor-not-allowed text-gray-600 opacity-50'
                   }`}
                 >
                   {isPostingToEbay ? (
@@ -244,12 +307,12 @@ export default function ListingPreview({ listingData, isLoading, onUpdate, uploa
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      <span>Opening eBay...</span>
+                      <span>{isEbayConnected ? 'Creating listing...' : 'Opening eBay...'}</span>
                     </>
                   ) : (
                     <>
                       <span>🛒</span>
-                      <span>Post to eBay</span>
+                      <span>{isEbayConnected ? 'Create eBay Listing' : 'Post to eBay (Manual)'}</span>
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                       </svg>
@@ -286,13 +349,17 @@ export default function ListingPreview({ listingData, isLoading, onUpdate, uploa
                 </button>
               </div>
 
-              <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+              {/* eBay Connection Status */}
+              <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
                 <div className="flex items-start">
-                  <svg className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg className="w-4 h-4 text-amber-600 mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-xs text-green-700">
-                    ✨ eBay integration active! Click "Post to eBay" to auto-fill your listing. Facebook & Instagram integrations coming soon.
+                  <p className="text-xs text-amber-700">
+                    {isEbayConnected 
+                      ? '✨ eBay account connected! Click "Create eBay Listing" to publish.'
+                      : '📋 Connect your eBay account to enable automatic listing creation.'
+                    }
                   </p>
                 </div>
               </div>

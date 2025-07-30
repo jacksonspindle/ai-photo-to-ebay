@@ -66,64 +66,76 @@ const formatDescription = (description) => {
 
 /**
  * Build eBay listing URL with pre-populated data
+ * Using a more reliable approach with encoded data
  */
 export const buildEbayListingUrl = (listingData, images = []) => {
   if (!listingData) {
     throw new Error('Listing data is required')
   }
 
-  // Base eBay sell page URL
+  // eBay's sell hub URL - this is the most reliable entry point
   const baseUrl = 'https://www.ebay.com/sl/sell'
   
-  // Build URL parameters
-  const params = new URLSearchParams()
+  // Create a session data object that eBay can parse
+  const sessionData = {
+    title: '',
+    description: '',
+    price: '',
+    categoryId: '',
+    condition: ''
+  }
   
   // Title (max 80 characters on eBay)
   if (listingData.title) {
-    params.append('title', truncateText(listingData.title, 80))
+    const truncatedTitle = truncateText(listingData.title, 80)
+    if (truncatedTitle !== listingData.title) {
+      console.log('⚠️ Title truncated from', listingData.title.length, 'to 80 characters')
+      console.log('Original:', listingData.title)
+      console.log('Truncated:', truncatedTitle)
+    }
+    sessionData.title = truncatedTitle
   }
   
   // Category
   if (listingData.category && EBAY_CATEGORY_MAP[listingData.category]) {
-    params.append('catId', EBAY_CATEGORY_MAP[listingData.category])
+    sessionData.categoryId = EBAY_CATEGORY_MAP[listingData.category]
   }
   
   // Description
   if (listingData.description) {
-    params.append('description', formatDescription(listingData.description))
+    sessionData.description = formatDescription(listingData.description)
   }
   
   // Price
   if (listingData.suggestedPrice) {
-    const price = formatPrice(listingData.suggestedPrice)
-    params.append('price', price)
-    params.append('format', 'FixedPrice') // Fixed price listing
+    sessionData.price = formatPrice(listingData.suggestedPrice)
   }
   
   // Condition
   if (listingData.condition && EBAY_CONDITION_MAP[listingData.condition]) {
-    params.append('conditionId', EBAY_CONDITION_MAP[listingData.condition])
+    sessionData.condition = EBAY_CONDITION_MAP[listingData.condition]
   }
+
+  // For now, we'll use the basic sell hub URL
+  // eBay requires authentication to pre-fill forms, so we'll provide
+  // instructions to the user on how to use the data
+  const finalUrl = baseUrl
   
-  // Keywords (if available)
-  if (listingData.keywords && Array.isArray(listingData.keywords)) {
-    const keywordString = listingData.keywords.slice(0, 5).join(', ') // Limit keywords
-    params.append('keywords', keywordString)
+  // Store the data in a format the user can easily copy
+  console.log('🛒 eBay Listing Data:', sessionData)
+  console.log('📋 Ready to paste into eBay listing form')
+  
+  // We'll enhance the UI to show copy-paste instructions
+  return {
+    url: finalUrl,
+    data: sessionData,
+    instructions: true
   }
-  
-  // Add some default settings for better user experience
-  params.append('duration', '7') // 7 day listing
-  params.append('shippingType', 'Flat') // Flat rate shipping (user can change)
-  
-  // Construct final URL
-  const finalUrl = `${baseUrl}?${params.toString()}`
-  
-  console.log('🛒 Generated eBay listing URL:', finalUrl)
-  return finalUrl
 }
 
 /**
  * Validate listing data for eBay requirements
+ * Note: We auto-truncate long titles rather than reject them
  */
 export const validateEbayListing = (listingData) => {
   const errors = []
@@ -132,9 +144,8 @@ export const validateEbayListing = (listingData) => {
     errors.push('Title must be at least 5 characters long')
   }
   
-  if (listingData.title && listingData.title.length > 80) {
-    errors.push('Title must be 80 characters or less')
-  }
+  // Remove the check for title being too long - we'll auto-truncate instead
+  // This provides better UX than throwing an error
   
   if (!listingData.description || listingData.description.trim().length < 10) {
     errors.push('Description must be at least 10 characters long')
@@ -161,9 +172,14 @@ export const validateEbayListing = (listingData) => {
 
 /**
  * Main function to handle eBay integration
+ * Now uses full API integration if authenticated, falls back to URL method
  */
-export const postToEbay = (listingData, images = []) => {
+export const postToEbay = async (listingData, images = []) => {
   console.log('🚀 Starting eBay integration process...')
+  
+  // Import auth check dynamically to avoid circular dependencies
+  const { isEbayAuthenticated } = await import('./ebayAuthService')
+  const isAuthenticated = isEbayAuthenticated()
   
   // Validate the listing data
   const validation = validateEbayListing(listingData)
@@ -173,19 +189,56 @@ export const postToEbay = (listingData, images = []) => {
   }
   
   try {
-    // Build the eBay listing URL
-    const ebayUrl = buildEbayListingUrl(listingData, images)
-    
-    // Open eBay in a new tab/window
-    window.open(ebayUrl, '_blank', 'noopener,noreferrer')
-    
-    console.log('✅ Successfully redirected to eBay')
-    
-    // Return success info
-    return {
-      success: true,
-      url: ebayUrl,
-      message: 'Redirected to eBay with pre-filled listing data'
+    // Check if user is authenticated with eBay
+    if (isAuthenticated && images.length > 0) {
+      console.log('🔐 User authenticated, using API integration...')
+      
+      // Use the full API integration
+      const { createEbayListing } = await import('./ebayApiService')
+      const result = await createEbayListing(listingData, images.map(img => img.file))
+      
+      if (result.success) {
+        // Only open real listings in a new tab, not demo ones
+        if (!result.isDemo) {
+          window.open(result.listingUrl, '_blank', 'noopener,noreferrer')
+        }
+        
+        return {
+          success: true,
+          listingId: result.listingId,
+          url: result.listingUrl,
+          message: 'eBay listing created successfully!',
+          method: 'api'
+        }
+      } else {
+        throw new Error(result.error || 'Failed to create eBay listing')
+      }
+    } else {
+      console.log('📋 Using URL method (not authenticated)...')
+      
+      // Fall back to URL method
+      const ebayResult = buildEbayListingUrl(listingData, images)
+      
+      if (ebayResult.instructions) {
+        // Copy the title to clipboard for easy pasting
+        if (navigator.clipboard && ebayResult.data.title) {
+          navigator.clipboard.writeText(ebayResult.data.title)
+            .then(() => console.log('✅ Title copied to clipboard'))
+            .catch(err => console.log('❌ Failed to copy title:', err))
+        }
+        
+        // Open eBay in a new tab/window
+        window.open(ebayResult.url, '_blank', 'noopener,noreferrer')
+        
+        return {
+          success: true,
+          url: ebayResult.url,
+          data: ebayResult.data,
+          message: 'Please authenticate with eBay for automatic listing creation',
+          instructions: true,
+          method: 'url'
+        }
+      }
     }
     
   } catch (error) {

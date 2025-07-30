@@ -1,9 +1,17 @@
 import express from 'express'
 import cors from 'cors'
+import { v2 as cloudinary } from 'cloudinary'
 import 'dotenv/config'
 
 const app = express()
 const PORT = 3001
+
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+})
 
 // Middleware
 app.use(cors())
@@ -125,8 +133,120 @@ Guidelines:
   }
 })
 
+// Cloudinary image upload endpoint
+app.post('/api/upload-image', async (req, res) => {
+  try {
+    const { image, fileName } = req.body
+    
+    if (!image) {
+      return res.status(400).json({ error: 'No image data provided' })
+    }
+
+    // Check if Cloudinary is configured
+    if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
+      console.error('❌ Cloudinary credentials not configured')
+      return res.status(500).json({ 
+        error: 'Image hosting service not configured. Please set up Cloudinary credentials.' 
+      })
+    }
+
+    console.log('📤 Uploading image to Cloudinary...')
+
+    // Upload image to Cloudinary
+    const uploadResult = await cloudinary.uploader.upload(image, {
+      folder: 'ai-photo-to-ebay', // Organize images in a folder
+      resource_type: 'auto',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+      transformation: [
+        { quality: 'auto:best' }, // Optimize quality
+        { fetch_format: 'auto' }, // Auto format for best compression
+        { width: 1200, height: 1200, crop: 'limit' } // Max dimensions
+      ]
+    })
+
+    console.log('✅ Image uploaded successfully:', uploadResult.secure_url)
+
+    // Return the secure URL
+    res.json({
+      success: true,
+      url: uploadResult.secure_url,
+      publicId: uploadResult.public_id,
+      width: uploadResult.width,
+      height: uploadResult.height,
+      format: uploadResult.format
+    })
+
+  } catch (error) {
+    console.error('❌ Cloudinary upload error:', error)
+    res.status(500).json({ 
+      error: 'Failed to upload image',
+      message: error.message 
+    })
+  }
+})
+
+// eBay OAuth token exchange endpoint
+app.post('/api/ebay/token', async (req, res) => {
+  try {
+    const { code, redirectUri } = req.body
+    
+    if (!code || !redirectUri) {
+      return res.status(400).json({ error: 'Missing authorization code or redirect URI' })
+    }
+
+    const clientId = process.env.VITE_EBAY_CLIENT_ID
+    const clientSecret = process.env.VITE_EBAY_CLIENT_SECRET
+    const sandbox = process.env.VITE_EBAY_SANDBOX === 'true'
+    
+    if (!clientId || !clientSecret) {
+      return res.status(500).json({ error: 'eBay credentials not configured on server' })
+    }
+
+    const tokenUrl = sandbox 
+      ? 'https://api.sandbox.ebay.com/identity/v1/oauth2/token'
+      : 'https://api.ebay.com/identity/v1/oauth2/token'
+
+    const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
+    
+    const response = await fetch(tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Basic ${credentials}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: redirectUri
+      })
+    })
+
+    if (!response.ok) {
+      const error = await response.json()
+      console.error('eBay token exchange failed:', error)
+      return res.status(response.status).json({ 
+        error: error.error_description || 'Token exchange failed',
+        details: error 
+      })
+    }
+
+    const tokenData = await response.json()
+    console.log('✅ eBay token exchange successful')
+    
+    res.json(tokenData)
+
+  } catch (error) {
+    console.error('❌ Token exchange error:', error)
+    res.status(500).json({ 
+      error: 'Server error during token exchange',
+      message: error.message 
+    })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`🚀 AI Photo to eBay server running on http://localhost:${PORT}`)
   console.log(`🔍 Health check: http://localhost:${PORT}/health`)
   console.log(`🤖 API endpoint: http://localhost:${PORT}/api/analyze-image`)
+  console.log(`📤 Image upload: http://localhost:${PORT}/api/upload-image`)
 })
