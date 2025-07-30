@@ -1,0 +1,22 @@
+{
+  "name": "Photo to eBay - AI Listing Generator",
+  "short_name": "Photo2eBay",
+  "description": "Generate eBay listings from photos using AI",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#3B82F6",
+  "background_color": "#F9FAFB",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/vite.svg",
+      "sizes": "32x32",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "shopping"],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
