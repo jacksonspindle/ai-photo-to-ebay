@@ -37,16 +37,23 @@ export default async function handler(req, res) {
 
     // Helper function to get category ID
     const getCategoryId = (category) => {
-      const categoryMap = {
-        'Electronics': '15032', // Electronics & Accessories > Cell Phones & Accessories > Cell Phone Accessories
-        'Clothing': '15724',    // Clothing, Shoes & Accessories > Men's Clothing > Shirts
-        'Home & Garden': '159912', // Home & Garden > Yard, Garden & Outdoor Items > Plants, Seeds & Bulbs
-        'Sports': '888',        // Sports Memorabilia, Cards & Fan Shop
-        'Toys': '220',          // Toys & Hobbies
-        'Books': '267',         // Books & Magazines
-        'Other': '99'           // Collectibles
+      // For sandbox, always use the most reliable category - Collectibles (99)
+      // This is the most basic category that should always work in sandbox
+      if (sandbox) {
+        return '99' // Always use Collectibles for sandbox testing
+      } else {
+        // For production, use more specific categories
+        const categoryMap = {
+          'Electronics': '15032', // Electronics & Accessories > Cell Phones & Accessories > Cell Phone Accessories
+          'Clothing': '15724',    // Clothing, Shoes & Accessories > Men's Clothing > Shirts
+          'Home & Garden': '159912', // Home & Garden > Yard, Garden & Outdoor Items > Plants, Seeds & Bulbs
+          'Sports': '888',        // Sports Memorabilia, Cards & Fan Shop
+          'Toys': '220',          // Toys & Hobbies
+          'Books': '267',         // Books & Magazines
+          'Other': '99'           // Collectibles
+        }
+        return categoryMap[category] || '99'
       }
-      return categoryMap[category] || '99'
     }
 
     // Helper function to extract price

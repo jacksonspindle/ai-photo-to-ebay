@@ -34,21 +34,26 @@ export default async function handler(req, res) {
       : 'https://api.ebay.com/ws/api.dll'
 
     console.log('🛒 Creating eBay listing via Trading API...')
+    console.log('📋 Selected category:', listingData.category, '-> Category ID:', getCategoryId(listingData.category))
 
     // Helper function to get leaf category ID - using proper leaf categories
     const getCategoryId = (category) => {
       if (sandbox) {
-        // For sandbox, use specific leaf categories that are known to work
+        // For sandbox, use the most basic test categories that are guaranteed to work
+        // These are the most basic leaf categories in eBay sandbox
         const sandboxCategoryMap = {
-          'Electronics': '15032', // Electronics & Accessories > Cell Phones & Accessories > Cell Phone Accessories
-          'Clothing': '15724',    // Clothing, Shoes & Accessories > Men's Clothing > Shirts
-          'Home & Garden': '159912', // Home & Garden > Yard, Garden & Outdoor Items > Plants, Seeds & Bulbs
-          'Sports': '888',        // Sports Memorabilia, Cards & Fan Shop
-          'Toys': '220',          // Toys & Hobbies
-          'Books': '267',         // Books & Magazines
-          'Other': '99'           // Collectibles
+          'Electronics': '15032', // Test category for electronics
+          'Clothing': '15724',    // Test category for clothing
+          'Home & Garden': '159912', // Test category for home
+          'Sports': '888',        // Sports Memorabilia (this one usually works)
+          'Toys': '220',          // Toys & Hobbies (this one usually works)
+          'Books': '267',         // Books & Magazines (this one usually works)
+          'Other': '99'           // Collectibles (this one usually works)
         }
-        return sandboxCategoryMap[category] || '99'
+        
+        // For sandbox, let's use the most reliable category - Collectibles (99)
+        // This is the most basic category that should always work in sandbox
+        return '99' // Always use Collectibles for sandbox testing
       } else {
         // For production, use more specific categories
         const categoryMap = {
@@ -140,9 +145,14 @@ export default async function handler(req, res) {
     if (!response.ok) {
       const errorText = await response.text()
       console.error('❌ Trading API error:', response.status, errorText)
+      
+      // Log the XML request for debugging
+      console.error('📤 XML Request sent:', xmlRequest)
+      
       return res.status(response.status).json({ 
         error: 'eBay Trading API error',
-        details: errorText 
+        details: errorText,
+        xmlRequest: xmlRequest // Include the request for debugging
       })
     }
 
