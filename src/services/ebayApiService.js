@@ -89,7 +89,7 @@ const getOrCreateInventoryLocation = async (token) => {
     // For sandbox, we'll skip location creation and use a simple approach
     // Many eBay listing APIs don't require explicit location setup in sandbox
     console.log('📍 Skipping inventory location for sandbox...')
-    return 'DEFAULT_LOCATION'
+    return 'default_location'
 
   } catch (error) {
     console.error('Location error:', error)
