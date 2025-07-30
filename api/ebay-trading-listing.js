@@ -33,41 +33,37 @@ export default async function handler(req, res) {
       ? 'https://api.sandbox.ebay.com/ws/api.dll'
       : 'https://api.ebay.com/ws/api.dll'
 
-    console.log('🛒 Creating eBay listing via Trading API...')
-    console.log('📋 Selected category:', listingData.category, '-> Category ID:', getCategoryId(listingData.category))
-    console.log('🔧 Sandbox mode:', sandbox)
-
-    // Helper function to get leaf category ID - using proper leaf categories
+    // Helper functions - define BEFORE using them
     const getCategoryId = (category) => {
       if (sandbox) {
-        // For sandbox, try the most basic approach - use category 1 (root)
-        // This is the most basic category that should always exist
-        return '1' // Use root category for sandbox testing
+        // For sandbox, use a known working category
+        return '11450' // Clothing category that should work
       } else {
-        // For production, use more specific categories
         const categoryMap = {
-          'Electronics': '15032', // Electronics & Accessories > Cell Phones & Accessories > Cell Phone Accessories
-          'Clothing': '15724',    // Clothing, Shoes & Accessories > Men's Clothing > Shirts
-          'Home & Garden': '159912', // Home & Garden > Yard, Garden & Outdoor Items > Plants, Seeds & Bulbs
-          'Sports': '888',        // Sports Memorabilia, Cards & Fan Shop
-          'Toys': '220',          // Toys & Hobbies
-          'Books': '267',         // Books & Magazines
-          'Other': '99'           // Collectibles
+          'Electronics': '15032',
+          'Clothing': '15724',
+          'Home & Garden': '159912',
+          'Sports': '888',
+          'Toys': '220',
+          'Books': '267',
+          'Other': '99'
         }
         return categoryMap[category] || '99'
       }
     }
 
-    // Helper function to extract price
     const extractPrice = (priceString) => {
       const cleaned = priceString.replace(/[$,]/g, '')
       return parseFloat(cleaned).toFixed(2)
     }
 
-    // Helper function to truncate title to 80 characters
     const truncateTitle = (title) => {
       return title.length > 80 ? title.substring(0, 77) + '...' : title
     }
+
+    console.log('🛒 Creating eBay listing via Trading API...')
+    console.log('📋 Selected category:', listingData.category, '-> Category ID:', getCategoryId(listingData.category))
+    console.log('🔧 Sandbox mode:', sandbox)
 
     // Build XML request for AddFixedPriceItem
     const xmlRequest = `<?xml version="1.0" encoding="utf-8"?>
@@ -78,9 +74,9 @@ export default async function handler(req, res) {
   <Item>
     <Title>${truncateTitle(listingData.title)}</Title>
     <Description><![CDATA[${listingData.description}]]></Description>
-    ${sandbox ? '' : `<PrimaryCategory>
+    <PrimaryCategory>
       <CategoryID>${getCategoryId(listingData.category)}</CategoryID>
-    </PrimaryCategory>`}
+    </PrimaryCategory>
     <StartPrice>${extractPrice(listingData.suggestedPrice)}</StartPrice>
     <CategoryMappingAllowed>true</CategoryMappingAllowed>
     <Country>US</Country>
