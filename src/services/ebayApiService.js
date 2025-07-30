@@ -110,13 +110,11 @@ const createInventoryItem = async (token, sku, listingData, imageUrls) => {
         'Content-Language': 'en-US'
       },
       body: JSON.stringify({
-        sku: sku,
         product: {
           title: listingData.title,
           description: listingData.description,
-          aspects: getProductAspects(listingData),
           imageUrls: imageUrls,
-          condition: mapConditionToEbay(listingData.condition)
+          condition: 'NEW'
         },
         availability: {
           shipToLocationAvailability: {
@@ -127,9 +125,17 @@ const createInventoryItem = async (token, sku, listingData, imageUrls) => {
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      console.error('Inventory item error:', error)
-      return { success: false, error: error.message || 'Failed to create inventory item' }
+      const errorText = await response.text()
+      console.error('Inventory item error:', response.status, errorText)
+      let errorMessage = 'Failed to create inventory item'
+      try {
+        const errorJson = JSON.parse(errorText)
+        errorMessage = errorJson.errors?.[0]?.message || errorJson.message || errorMessage
+      } catch (e) {
+        // Use errorText if JSON parsing fails
+        errorMessage = errorText || errorMessage
+      }
+      return { success: false, error: errorMessage }
     }
 
     return { success: true }
