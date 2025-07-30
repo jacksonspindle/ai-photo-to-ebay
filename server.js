@@ -244,6 +244,65 @@ app.post('/api/ebay/token', async (req, res) => {
   }
 })
 
+// eBay inventory item creation endpoint
+app.post('/api/ebay-inventory', async (req, res) => {
+  try {
+    const { token, sku, listingData, imageUrls } = req.body
+    
+    if (!token || !sku || !listingData) {
+      return res.status(400).json({ error: 'Missing required parameters' })
+    }
+
+    const sandbox = process.env.VITE_EBAY_SANDBOX === 'true'
+    const EBAY_API_BASE = sandbox 
+      ? 'https://api.sandbox.ebay.com'
+      : 'https://api.ebay.com'
+
+    console.log('🔨 Creating eBay inventory item:', sku)
+    
+    const response = await fetch(`${EBAY_API_BASE}/sell/inventory/v1/inventory_item/${sku}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Content-Language': 'en-US'
+      },
+      body: JSON.stringify({
+        product: {
+          title: listingData.title,
+          description: listingData.description,
+          imageUrls: imageUrls,
+          condition: 'NEW'
+        },
+        availability: {
+          shipToLocationAvailability: {
+            quantity: 1
+          }
+        }
+      })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('❌ eBay inventory error:', response.status, errorText)
+      return res.status(response.status).json({ 
+        error: 'eBay API error',
+        details: errorText 
+      })
+    }
+
+    console.log('✅ eBay inventory item created successfully')
+    res.json({ success: true })
+
+  } catch (error) {
+    console.error('❌ Inventory creation error:', error)
+    res.status(500).json({ 
+      error: 'Server error during inventory creation',
+      message: error.message 
+    })
+  }
+})
+
 app.listen(PORT, () => {
   console.log(`🚀 AI Photo to eBay server running on http://localhost:${PORT}`)
   console.log(`🔍 Health check: http://localhost:${PORT}/health`)

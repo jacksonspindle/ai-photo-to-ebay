@@ -102,25 +102,17 @@ const getOrCreateInventoryLocation = async (token) => {
  */
 const createInventoryItem = async (token, sku, listingData, imageUrls) => {
   try {
-    const response = await fetch(`${EBAY_API_BASE}/sell/inventory/v1/inventory_item/${sku}`, {
-      method: 'PUT',
+    // Make the request through our backend to avoid CORS issues
+    const response = await fetch(`${getApiBaseUrl()}/api/ebay-inventory`, {
+      method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Content-Language': 'en-US'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        product: {
-          title: listingData.title,
-          description: listingData.description,
-          imageUrls: imageUrls,
-          condition: 'NEW'
-        },
-        availability: {
-          shipToLocationAvailability: {
-            quantity: 1
-          }
-        }
+        token: token,
+        sku: sku,
+        listingData: listingData,
+        imageUrls: imageUrls
       })
     })
 
@@ -280,4 +272,9 @@ const getListingUrl = (listingId) => {
     ? 'https://sandbox.ebay.com'
     : 'https://www.ebay.com'
   return `${base}/itm/${listingId}`
+}
+
+const getApiBaseUrl = () => {
+  return import.meta.env.VITE_API_BASE_URL || 
+    (import.meta.env.DEV ? 'http://localhost:3001' : '')
 }
