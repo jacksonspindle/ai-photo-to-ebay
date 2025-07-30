@@ -54,6 +54,36 @@ export default async function handler(req, res) {
       const cleaned = priceString.replace(/[$,]/g, '')
       return parseFloat(cleaned).toFixed(2)
     }
+
+    // Get business policy IDs
+    console.log('📋 Retrieving business policy IDs...')
+    let policyIds = {
+      fulfillmentPolicyId: null,
+      paymentPolicyId: null,
+      returnPolicyId: null
+    }
+
+    try {
+      // Use relative URL for internal serverless function calls
+      const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://ai-photo-to-ebay.vercel.app'
+      const policiesResponse = await fetch(`${baseUrl}/api/ebay-policies`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ token })
+      })
+
+      if (policiesResponse.ok) {
+        const policiesData = await policiesResponse.json()
+        policyIds = policiesData.policies
+        console.log('✅ Retrieved policy IDs:', policyIds)
+      } else {
+        console.log('❌ Failed to retrieve policies, using defaults')
+      }
+    } catch (error) {
+      console.log('❌ Policy retrieval error:', error.message)
+    }
     
     const response = await fetch(`${EBAY_API_BASE}/sell/inventory/v1/offer`, {
       method: 'POST',
@@ -78,9 +108,9 @@ export default async function handler(req, res) {
           }
         },
         listingPolicies: {
-          fulfillmentPolicyId: '0000000000',  // Default policy
-          paymentPolicyId: '0000000000',      // Default policy
-          returnPolicyId: '0000000000'        // Default policy
+          fulfillmentPolicyId: policyIds.fulfillmentPolicyId || '0000000000',
+          paymentPolicyId: policyIds.paymentPolicyId || '0000000000',
+          returnPolicyId: policyIds.returnPolicyId || '0000000000'
         }
       })
     })
