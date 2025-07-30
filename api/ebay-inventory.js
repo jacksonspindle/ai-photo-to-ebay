@@ -40,7 +40,8 @@ export default async function handler(req, res) {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
-        'Content-Language': 'en-US'
+        'Content-Language': 'en-US',
+        'Accept': 'application/json'
       },
       body: JSON.stringify({
         product: {
@@ -60,9 +61,20 @@ export default async function handler(req, res) {
     if (!response.ok) {
       const errorText = await response.text()
       console.error('❌ eBay inventory error:', response.status, errorText)
+      
+      // Try to parse error details
+      let errorDetails = errorText
+      try {
+        const errorJson = JSON.parse(errorText)
+        errorDetails = errorJson
+        console.error('❌ Parsed eBay error:', JSON.stringify(errorJson, null, 2))
+      } catch (e) {
+        console.error('❌ Raw eBay error text:', errorText)
+      }
+      
       return res.status(response.status).json({ 
         error: 'eBay API error',
-        details: errorText 
+        details: errorDetails 
       })
     }
 

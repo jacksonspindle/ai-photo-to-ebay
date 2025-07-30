@@ -11,8 +11,9 @@ const EBAY_API_BASE = import.meta.env.VITE_EBAY_SANDBOX === 'true'
 
 // Required scopes for listing items
 const EBAY_SCOPES = [
-  'https://api.ebay.com/oauth/api_scope',
+  'https://api.ebay.com/oauth/api_scope/sell.inventory.readonly',
   'https://api.ebay.com/oauth/api_scope/sell.inventory',
+  'https://api.ebay.com/oauth/api_scope/sell.account.readonly',
   'https://api.ebay.com/oauth/api_scope/sell.account'
 ].join(' ')
 
