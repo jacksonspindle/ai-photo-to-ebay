@@ -143,38 +143,31 @@ const createInventoryItem = async (token, sku, listingData, imageUrls) => {
  */
 const createOffer = async (token, sku, listingData, locationKey) => {
   try {
-    const response = await fetch(`${EBAY_API_BASE}/sell/inventory/v1/offer`, {
+    // Make the request through our backend to avoid CORS issues
+    const response = await fetch(`${getApiBaseUrl()}/api/ebay-offer`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Content-Language': 'en-US'
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
+        token: token,
         sku: sku,
-        marketplaceId: 'EBAY_US',
-        format: 'FIXED_PRICE',
-        availableQuantity: 1,
-        categoryId: getCategoryId(listingData.category),
-        merchantLocationKey: locationKey,
-        pricingSummary: {
-          price: {
-            value: extractPrice(listingData.suggestedPrice),
-            currency: 'USD'
-          }
-        },
-        listingPolicies: {
-          fulfillmentPolicyId: '0000000000',  // Default policy
-          paymentPolicyId: '0000000000',      // Default policy
-          returnPolicyId: '0000000000'        // Default policy
-        }
+        listingData: listingData,
+        locationKey: locationKey
       })
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      console.error('Offer creation error:', error)
-      return { success: false, error: error.message || 'Failed to create offer' }
+      const errorText = await response.text()
+      console.error('Offer creation error:', response.status, errorText)
+      let errorMessage = 'Failed to create offer'
+      try {
+        const errorJson = JSON.parse(errorText)
+        errorMessage = errorJson.error || errorMessage
+      } catch (e) {
+        errorMessage = errorText || errorMessage
+      }
+      return { success: false, error: errorMessage }
     }
 
     const data = await response.json()
@@ -191,18 +184,29 @@ const createOffer = async (token, sku, listingData, locationKey) => {
  */
 const publishOffer = async (token, offerId) => {
   try {
-    const response = await fetch(`${EBAY_API_BASE}/sell/inventory/v1/offer/${offerId}/publish`, {
+    // Make the request through our backend to avoid CORS issues
+    const response = await fetch(`${getApiBaseUrl()}/api/ebay-publish`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
-      }
+      },
+      body: JSON.stringify({
+        token: token,
+        offerId: offerId
+      })
     })
 
     if (!response.ok) {
-      const error = await response.json()
-      console.error('Publish error:', error)
-      return { success: false, error: error.message || 'Failed to publish offer' }
+      const errorText = await response.text()
+      console.error('Publish error:', response.status, errorText)
+      let errorMessage = 'Failed to publish offer'
+      try {
+        const errorJson = JSON.parse(errorText)
+        errorMessage = errorJson.error || errorMessage
+      } catch (e) {
+        errorMessage = errorText || errorMessage
+      }
+      return { success: false, error: errorMessage }
     }
 
     const data = await response.json()
