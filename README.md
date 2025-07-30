@@ -92,6 +92,39 @@ src/
 - [ ] OCR for text detection
 - [ ] Multi-language support
 
+## Deployment
+
+### Vercel (Recommended)
+
+1. **Connect GitHub repository to Vercel:**
+   - Go to [vercel.com](https://vercel.com) and connect your GitHub
+   - Import this repository
+
+2. **Set environment variables:**
+   ```
+   VITE_ANTHROPIC_API_KEY=your_anthropic_key_here
+   ```
+
+3. **Deploy:**
+   - Vercel will automatically detect the configuration and deploy
+   - The app will be available at your-app.vercel.app
+
+### Local Development with Backend
+
+For local development, you can still use the Express server:
+
+```bash
+# Terminal 1: Start Express backend
+node server.js
+
+# Terminal 2: Start React frontend  
+npm run dev
+```
+
+The app automatically detects the environment and uses:
+- **Development**: `http://localhost:3001` (Express server)
+- **Production**: Vercel serverless functions
+
 ## License
 
 MIT

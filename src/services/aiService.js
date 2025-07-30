@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001'
+// API base URL - automatically detects environment
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (import.meta.env.DEV ? 'http://localhost:3001' : '')
 
 // Convert image file to base64
 const fileToBase64 = (file) => {
@@ -133,7 +135,7 @@ export const analyzeImageWithClaude = async (imageFile) => {
     const mediaType = imageFile.type
     console.log('Image converted, calling backend proxy...', { mediaType, base64Length: base64Image.length })
 
-    const response = await fetch('http://localhost:3001/api/analyze-image', {
+    const response = await fetch(`${API_BASE_URL}/api/analyze-image`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
