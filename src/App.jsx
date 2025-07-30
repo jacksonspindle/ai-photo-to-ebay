@@ -91,6 +91,7 @@ function App() {
               isLoading={isAnalyzing}
               onUpdate={setListingData}
               uploadedImage={uploadedImages[0]}
+              uploadedImages={uploadedImages}
               showIntegrationButtons={listingData && !isAnalyzing}
             />
           )}
@@ -184,6 +185,7 @@ function App() {
                     isLoading={isAnalyzing}
                     onUpdate={setListingData}
                     uploadedImage={uploadedImages[0]}
+                    uploadedImages={uploadedImages}
                     showIntegrationButtons={listingData && !isAnalyzing}
                   />
                 )}

@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { postToEbay } from '../services/ebayService'
 
-export default function ListingPreview({ listingData, isLoading, onUpdate, uploadedImage, showIntegrationButtons = false }) {
+export default function ListingPreview({ listingData, isLoading, onUpdate, uploadedImage, uploadedImages = [], showIntegrationButtons = false }) {
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState(listingData || {})
+  const [isPostingToEbay, setIsPostingToEbay] = useState(false)
 
   const handleEdit = () => {
     setEditData(listingData)
@@ -17,6 +19,32 @@ export default function ListingPreview({ listingData, isLoading, onUpdate, uploa
   const handleCancel = () => {
     setEditData(listingData)
     setIsEditing(false)
+  }
+
+  const handlePostToEbay = async () => {
+    try {
+      setIsPostingToEbay(true)
+      
+      // Use the current listing data (either original or edited)
+      const dataToPost = isEditing ? editData : listingData
+      
+      // Post to eBay with images
+      const result = await postToEbay(dataToPost, uploadedImages)
+      
+      console.log('✅ Successfully posted to eBay:', result)
+      
+      // Optional: Show success feedback to user
+      // You could add a toast notification here
+      
+    } catch (error) {
+      console.error('❌ Failed to post to eBay:', error)
+      
+      // Show error message to user
+      alert(`Failed to post to eBay: ${error.message}`)
+      
+    } finally {
+      setIsPostingToEbay(false)
+    }
   }
 
   if (isLoading) {
@@ -202,16 +230,31 @@ export default function ListingPreview({ listingData, isLoading, onUpdate, uploa
               <div className="grid grid-cols-1 gap-2">
                 {/* eBay Button */}
                 <button
-                  onClick={() => {
-                    alert(`eBay Integration Coming Soon!\n\nListing Data:\n${JSON.stringify(listingData, null, 2)}`)
-                  }}
-                  className="w-full py-2.5 px-4 bg-yellow-400 hover:bg-yellow-500 active:bg-yellow-600 text-black text-sm font-medium rounded-xl haptic-medium flex items-center justify-center space-x-2 transition-all duration-200"
+                  onClick={handlePostToEbay}
+                  disabled={isPostingToEbay}
+                  className={`w-full py-2.5 px-4 text-black text-sm font-medium rounded-xl haptic-medium flex items-center justify-center space-x-2 transition-all duration-200 ${
+                    isPostingToEbay 
+                      ? 'bg-yellow-300 cursor-not-allowed' 
+                      : 'bg-yellow-400 hover:bg-yellow-500 active:bg-yellow-600'
+                  }`}
                 >
-                  <span>🛒</span>
-                  <span>Post to eBay</span>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
+                  {isPostingToEbay ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span>Opening eBay...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>🛒</span>
+                      <span>Post to eBay</span>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </>
+                  )}
                 </button>
 
                 {/* Facebook Marketplace Button */}
@@ -243,13 +286,13 @@ export default function ListingPreview({ listingData, isLoading, onUpdate, uploa
                 </button>
               </div>
 
-              <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="mt-3 p-2 bg-green-50 border border-green-200 rounded-lg">
                 <div className="flex items-start">
-                  <svg className="w-4 h-4 text-amber-600 mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg className="w-4 h-4 text-green-600 mt-0.5 mr-2 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <p className="text-xs text-amber-700">
-                    Direct integrations coming soon. Copy details and post manually for now.
+                  <p className="text-xs text-green-700">
+                    ✨ eBay integration active! Click "Post to eBay" to auto-fill your listing. Facebook & Instagram integrations coming soon.
                   </p>
                 </div>
               </div>
