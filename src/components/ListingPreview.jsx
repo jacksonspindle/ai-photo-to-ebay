@@ -336,13 +336,40 @@ export default function ListingPreview({ listingData, isLoading, onUpdate, uploa
 
                 {/* eBay Account Setup Button - shown when connected but getting permission errors */}
                 {isEbayConnected && (
-                  <button
-                    onClick={handleSetupEbayAccount}
-                    className="w-full py-2 px-4 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white text-xs font-medium rounded-xl haptic-medium flex items-center justify-center space-x-2 transition-all duration-200"
-                  >
-                    <span>⚙️</span>
-                    <span>Setup eBay Account</span>
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleSetupEbayAccount}
+                      className="flex-1 py-2 px-4 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white text-xs font-medium rounded-xl haptic-medium flex items-center justify-center space-x-2 transition-all duration-200"
+                    >
+                      <span>⚙️</span>
+                      <span>Setup eBay Account</span>
+                    </button>
+                    
+                    <button
+                      onClick={async () => {
+                        try {
+                          const token = localStorage.getItem('ebay_access_token')
+                          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+                            (import.meta.env.DEV ? 'http://localhost:3001' : '')
+                          
+                          const response = await fetch(`${API_BASE_URL}/api/ebay-get-fulfillment-policies`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ token })
+                          })
+                          const data = await response.json()
+                          console.log('Current fulfillment policies:', data)
+                          alert('Check console for fulfillment policies structure')
+                        } catch (error) {
+                          console.error('Error getting policies:', error)
+                        }
+                      }}
+                      className="py-2 px-3 bg-gray-600 hover:bg-gray-700 text-white text-xs font-medium rounded-xl transition-all duration-200"
+                      title="Debug: Check existing policies"
+                    >
+                      🔍
+                    </button>
+                  </div>
                 )}
 
                 {/* eBay Post Button */}

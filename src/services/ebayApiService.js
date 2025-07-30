@@ -54,8 +54,26 @@ export const createEbayListing = async (listingData, imageFiles) => {
       throw new Error(`Failed to create offer: ${offerResult.error}`)
     }
 
-    // Step 5: Publish offer
-    console.log('📢 Step 5: Publishing listing...')
+    // Alternative: Try Trading API instead of Inventory API
+    console.log('📢 Step 5: Trying Trading API as fallback...')
+    
+    try {
+      const tradingResult = await createTradingApiListing(token, listingData, imageUrls)
+      
+      if (tradingResult.success) {
+        console.log('🎉 eBay listing created successfully via Trading API!')
+        return {
+          success: true,
+          listingId: tradingResult.listingId,
+          listingUrl: tradingResult.listingUrl,
+          method: 'trading_api'
+        }
+      }
+    } catch (tradingError) {
+      console.log('⚠️ Trading API also failed, trying original publish...')
+    }
+
+    // Original publish approach
     const publishResult = await publishOffer(token, offerResult.offerId)
     
     if (!publishResult.success) {
@@ -242,13 +260,13 @@ const mapConditionToEbay = (condition) => {
 
 const getCategoryId = (category) => {
   const categoryMap = {
-    'Electronics': '58058',
-    'Clothing': '11450',
-    'Home & Garden': '11700',
-    'Sports': '888',
-    'Toys': '220',
-    'Books': '267',
-    'Other': '99'
+    'Electronics': '15032', // Electronics & Accessories > Cell Phones & Accessories > Cell Phone Accessories
+    'Clothing': '15724',    // Clothing, Shoes & Accessories > Men's Clothing > Shirts
+    'Home & Garden': '159912', // Home & Garden > Yard, Garden & Outdoor Items > Plants, Seeds & Bulbs
+    'Sports': '888',        // Sports Memorabilia, Cards & Fan Shop
+    'Toys': '220',          // Toys & Hobbies
+    'Books': '267',         // Books & Magazines
+    'Other': '99'           // Collectibles
   }
   return categoryMap[category] || '99'
 }
@@ -276,6 +294,38 @@ const getListingUrl = (listingId) => {
     ? 'https://sandbox.ebay.com'
     : 'https://www.ebay.com'
   return `${base}/itm/${listingId}`
+}
+
+/**
+ * Create listing via Trading API (alternative to Inventory API)
+ */
+const createTradingApiListing = async (token, listingData, imageUrls) => {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/api/ebay-trading-listing`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        token: token,
+        listingData: listingData,
+        imageUrls: imageUrls
+      })
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error('Trading API error:', response.status, errorText)
+      return { success: false, error: errorText }
+    }
+
+    const data = await response.json()
+    return data
+
+  } catch (error) {
+    console.error('Trading API request error:', error)
+    return { success: false, error: error.message }
+  }
 }
 
 const getApiBaseUrl = () => {

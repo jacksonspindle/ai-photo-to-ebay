@@ -1,150 +1,122 @@
-# eBay Developer Setup Guide
+# eBay Account Setup Guide
 
-This guide will help you configure your eBay developer credentials to enable real eBay listing creation.
+This guide will help you resolve the category and shipping service errors you're encountering.
 
-## 1. Get eBay Developer Credentials
+## Issues You're Experiencing
 
-1. **Visit eBay Developer Program**: Go to [https://developer.ebay.com/](https://developer.ebay.com/)
+1. **Category Error**: "The category selected is not a leaf category"
+2. **Shipping Service Error**: "Please add at least one valid shipping service option to your listing"
 
-2. **Create Developer Account**: Sign up or log in with your eBay account
+## Step-by-Step Resolution
 
-3. **Create an Application**:
-   - Go to "My Account" → "Keys"
-   - Click "Create New Keyset" 
-   - Choose "Production" for live listings or "Sandbox" for testing
-   - Fill in application details:
-     - **Application Title**: "AI Photo to eBay Listing Generator"
-     - **Application Description**: "Web app that uses AI to generate eBay listings from photos"
+### 1. Fix Category Issues
 
-4. **Configure OAuth Settings**:
-   - **Redirect URL**: `http://localhost:5174/ebay-callback` (for development)
-   - **Redirect URL**: `https://your-vercel-app.vercel.app/ebay-callback` (for production)
-   - **Scopes**: Select these required scopes:
-     - `https://api.ebay.com/oauth/api_scope`
-     - `https://api.ebay.com/oauth/api_scope/sell.inventory`
-     - `https://api.ebay.com/oauth/api_scope/sell.account`
-     - `https://api.ebay.com/oauth/api_scope/sell.fulfillment`
+The error occurs because eBay requires **leaf categories** (specific subcategories) for listings. We've updated the code to use proper leaf categories:
 
-5. **Get Your Credentials**: After approval, you'll receive:
-   - **Client ID** (App ID)
-   - **Client Secret** (Dev ID) 
-   - **Redirect URI**
+- **Electronics**: `15032` (Cell Phone Accessories)
+- **Clothing**: `15724` (Men's Shirts)  
+- **Home & Garden**: `159912` (Plants, Seeds & Bulbs)
+- **Sports**: `888` (Sports Memorabilia)
+- **Toys**: `220` (Toys & Hobbies)
+- **Books**: `267` (Books & Magazines)
+- **Other**: `99` (Collectibles)
 
-## 2. Configure Environment Variables
+### 2. Fix Shipping Service Issues
 
-Add your eBay credentials to your `.env` file:
+The shipping service error occurs because your fulfillment policies don't have shipping services configured. Here's how to fix it:
 
-```bash
-# eBay Developer Credentials
-VITE_EBAY_CLIENT_ID=your_actual_client_id_here
-VITE_EBAY_CLIENT_SECRET=your_actual_client_secret_here
-VITE_EBAY_SANDBOX=true  # Set to false for production
+#### Option A: Configure Fulfillment Policies (Recommended)
 
-# For Vercel deployment, also add:
-VITE_API_BASE_URL=https://your-vercel-app.vercel.app
-```
+1. **Log into your eBay Developer Account**
+   - Go to https://developer.ebay.com
+   - Navigate to "My Account" > "Application Keys"
 
-## 3. Vercel Environment Variables
+2. **Set up Business Policies**
+   - In your eBay seller account, go to "Account" > "Site Preferences"
+   - Look for "Business Policies" or "Shipping Policies"
+   - Create a new fulfillment policy with shipping services
 
-When deploying to Vercel, add these environment variables in your Vercel dashboard:
+3. **Add Shipping Services to Your Policy**
+   - Choose shipping services like:
+     - USPS First Class Mail
+     - USPS Priority Mail
+     - UPS Ground
+     - FedEx Ground
 
-1. Go to your Vercel project dashboard
-2. Navigate to Settings → Environment Variables
-3. Add these variables:
+#### Option B: Use Trading API (Fallback)
 
-```
-VITE_EBAY_CLIENT_ID=your_actual_client_id_here
-VITE_EBAY_CLIENT_SECRET=your_actual_client_secret_here  
-VITE_EBAY_SANDBOX=true
-VITE_ANTHROPIC_API_KEY=your_claude_api_key
-CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-CLOUDINARY_API_KEY=your_cloudinary_api_key
-CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-```
+The code now includes a fallback to the Trading API which handles shipping services differently. This should work even without configured fulfillment policies.
 
-## 4. Test the Integration
+### 3. Test Your Setup
 
-### Development Testing:
-1. Start your development servers:
+1. **Check Your eBay Account Status**
    ```bash
-   npm run dev        # Frontend (port 5174)
-   node server.js     # Backend (port 3001)
+   # Test your token and account access
+   curl -H "Authorization: Bearer YOUR_TOKEN" \
+        "https://api.sandbox.ebay.com/sell/account/v1/fulfillment_policy?marketplace_id=EBAY_US"
    ```
 
-2. Upload a photo and generate a listing
-3. Click "Connect eBay Account" - should redirect to eBay
-4. After authentication, click "Create eBay Listing"
-5. Should create a real listing in eBay sandbox
+2. **Verify Shipping Services**
+   ```bash
+   # Check available shipping services
+   curl -H "Authorization: Bearer YOUR_TOKEN" \
+        "https://api.sandbox.ebay.com/sell/account/v1/shipping_service?marketplace_id=EBAY_US"
+   ```
 
-### Production Testing:
-1. Deploy to Vercel with environment variables set
-2. Test the full flow on your live URL
-3. Switch `VITE_EBAY_SANDBOX=false` when ready for production
+### 4. Environment Variables
 
-## 5. eBay Sandbox vs Production
+Make sure these are set in your `.env` file:
 
-### Sandbox Mode (`VITE_EBAY_SANDBOX=true`):
-- Safe testing environment
-- No real listings created
-- Use sandbox.ebay.com for testing
-- Perfect for development and testing
+```env
+VITE_EBAY_SANDBOX=true
+VITE_EBAY_APP_ID=your_app_id
+EBAY_DEV_ID=your_dev_id
+EBAY_CERT_ID=your_cert_id
+EBAY_CLIENT_SECRET=your_client_secret
+```
 
-### Production Mode (`VITE_EBAY_SANDBOX=false`):
-- Creates real eBay listings
-- Charges eBay fees
-- Use only when fully tested
-- Requires production eBay developer approval
+### 5. Common Solutions
 
-## 6. Troubleshooting
+#### If you're still getting category errors:
 
-### Common Issues:
+1. **Use the Trading API approach** - The code now tries this first
+2. **Check category IDs** - Make sure you're using the updated category mapping
+3. **Test with a simple category** - Try "Other" (category 99) first
 
-**"eBay credentials not configured"**
-- Ensure environment variables are set correctly
-- Restart your development server after adding variables
-- Check Vercel environment variables for production
+#### If you're still getting shipping service errors:
 
-**"Invalid redirect URI"**
-- Make sure redirect URI in eBay developer console matches exactly
-- Development: `http://localhost:5174/ebay-callback`
-- Production: `https://your-app.vercel.app/ebay-callback`
+1. **Create a fulfillment policy** with shipping services in your eBay account
+2. **Use the Trading API** - It handles shipping differently
+3. **Check your eBay account permissions** - Make sure you have selling privileges
 
-**"Insufficient scope"**
-- Ensure all required scopes are selected in eBay developer console
-- Request new token if scopes were added after initial setup
+### 6. Debugging
 
-**Token expired**
-- The app handles token refresh automatically
-- If issues persist, clear localStorage and re-authenticate
+The updated code includes better error logging. Check your browser console for:
 
-### Debug Tips:
-- Check browser console for detailed error messages
-- Monitor Network tab for API call failures
-- Verify environment variables are loaded correctly
+- ✅ Successful image uploads
+- ✅ Inventory item creation
+- ✅ Offer creation
+- ✅ Trading API fallback attempts
+- ❌ Specific error messages
 
-## 7. Going Live Checklist
+### 7. Alternative Approach
 
-Before switching to production:
+If you continue having issues with the Inventory API, the code now automatically falls back to the Trading API, which should work more reliably for basic listings.
 
-- [ ] Test complete flow in sandbox mode
-- [ ] Verify all listing data appears correctly on eBay
-- [ ] Test image uploads and display
-- [ ] Confirm pricing and category mapping
-- [ ] Set up error monitoring
-- [ ] Switch `VITE_EBAY_SANDBOX=false`
-- [ ] Update redirect URI to production URL
-- [ ] Test production authentication flow
+## Next Steps
 
-## 8. Security Notes
-
-- Never commit API keys to version control
-- Use environment variables for all credentials
-- Keep client secret secure on server-side only
-- Regularly rotate API keys for security
-- Monitor API usage for unusual activity
+1. Try creating a listing again with the updated code
+2. Check the browser console for detailed error messages
+3. If issues persist, try the Trading API approach (it should happen automatically)
+4. Consider setting up proper business policies in your eBay account for production use
 
 ## Support
 
-If you need help:
-- eBay Developer Support: [https://developer.ebay.com/support](https://developer.ebay.com/support)
-- eBay Developer Documentation: [https://developer.ebay.com/api-docs](https://developer.ebay.com/api-docs)
+If you're still experiencing issues:
+
+1. Check the browser console for specific error messages
+2. Verify your eBay account has proper selling permissions
+3. Ensure your API credentials are correct
+4. Try with a simple test listing first
+
+The updated code should handle most common issues automatically, but proper eBay account configuration will provide the best experience.

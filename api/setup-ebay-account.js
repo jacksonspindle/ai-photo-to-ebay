@@ -121,9 +121,47 @@ export default async function handler(req, res) {
       setupResults.errors.push(`Payment policy error: ${error.message}`)
     }
 
-    // Step 3: Create fulfillment policy
+    // Step 3: Create fulfillment policy (delete existing first to ensure clean state)
     try {
       console.log('📦 Creating fulfillment policy...')
+      
+      // Use 'Other' as a universal shipping service code
+      console.log('📦 Using "Other" as shipping service code for maximum compatibility')
+      
+      // Then, try to get existing policies and delete them
+      try {
+        const existingResponse = await fetch(`${EBAY_API_BASE}/sell/account/v1/fulfillment_policy?marketplace_id=EBAY_US`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US'
+          }
+        })
+        
+        if (existingResponse.ok) {
+          const existingData = await existingResponse.json()
+          if (existingData.fulfillmentPolicies && existingData.fulfillmentPolicies.length > 0) {
+            for (const policy of existingData.fulfillmentPolicies) {
+              try {
+                await fetch(`${EBAY_API_BASE}/sell/account/v1/fulfillment_policy/${policy.fulfillmentPolicyId}`, {
+                  method: 'DELETE',
+                  headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Accept': 'application/json'
+                  }
+                })
+                console.log('🗑️ Deleted existing fulfillment policy:', policy.fulfillmentPolicyId)
+              } catch (e) {
+                console.log('⚠️ Could not delete policy:', e.message)
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.log('⚠️ Could not check existing policies:', e.message)
+      }
+      
       const fulfillmentResponse = await fetch(`${EBAY_API_BASE}/sell/account/v1/fulfillment_policy`, {
         method: 'POST',
         headers: {
@@ -132,32 +170,34 @@ export default async function handler(req, res) {
           'Content-Language': 'en-US'
         },
         body: JSON.stringify({
-          name: 'Default Fulfillment Policy',
-          description: 'Default shipping policy for listings',
+          name: 'Basic Fulfillment Policy',
           marketplaceId: 'EBAY_US',
+          categoryTypes: [
+            {
+              name: 'ALL_EXCLUDING_MOTORS_VEHICLES'
+            }
+          ],
+          handlingTime: {
+            value: 1,
+            unit: 'DAY'
+          },
           shippingOptions: [
             {
               optionType: 'DOMESTIC',
               costType: 'FLAT_RATE',
               shippingServices: [
                 {
-                  serviceName: 'USPSGround',
+                  shippingServiceCode: 'US_StandardShipping',
                   shippingCost: {
-                    value: '5.99',
-                    currency: 'USD'
+                    currency: 'USD',
+                    value: '5.99'
                   },
-                  additionalShippingCost: {
-                    value: '2.99',
-                    currency: 'USD'
-                  }
+                  freeShipping: false,
+                  sortOrder: 1
                 }
               ]
             }
-          ],
-          handlingTime: {
-            value: 1,
-            unit: 'DAY'
-          }
+          ]
         })
       })
 

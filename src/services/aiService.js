@@ -24,6 +24,7 @@ export const analyzeImageWithOpenAI = async (imageFile) => {
     
     if (!apiKey) {
       throw new Error('OpenAI API key not configured')
+   
     }
 
     console.log('Converting image to base64...', { fileName: imageFile.name, size: imageFile.size })
