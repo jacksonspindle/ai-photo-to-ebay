@@ -94,6 +94,51 @@ export default function ListingPreview({ listingData, isLoading, onUpdate, uploa
     }
   }
 
+  const handleSetupEbayAccount = async () => {
+    try {
+      const token = localStorage.getItem('ebay_access_token')
+      if (!token) {
+        alert('Please connect to eBay first')
+        return
+      }
+
+      // Get API base URL
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+        (import.meta.env.DEV ? 'http://localhost:3001' : '')
+
+      const response = await fetch(`${API_BASE_URL}/api/setup-ebay-account`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ token })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log('eBay account setup result:', result)
+        
+        const setupSummary = []
+        if (result.results.inventoryLocation) setupSummary.push('✅ Inventory Location')
+        if (result.results.paymentPolicy) setupSummary.push('✅ Payment Policy')
+        if (result.results.fulfillmentPolicy) setupSummary.push('✅ Fulfillment Policy')
+        if (result.results.returnPolicy) setupSummary.push('✅ Return Policy')
+        
+        const errorCount = result.results.errors.length
+        const message = `eBay Account Setup Complete!\n\n${setupSummary.join('\n')}\n\n` +
+          (errorCount > 0 ? `⚠️ ${errorCount} warnings (check console)` : '🎉 All policies configured!')
+        
+        alert(message)
+      } else {
+        const error = await response.json()
+        alert(`Setup failed: ${error.message}`)
+      }
+    } catch (error) {
+      console.error('Setup error:', error)
+      alert(`Setup failed: ${error.message}`)
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="glass-card p-4 flex flex-col h-full justify-center">
@@ -286,6 +331,17 @@ export default function ListingPreview({ listingData, isLoading, onUpdate, uploa
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
+                  </button>
+                )}
+
+                {/* eBay Account Setup Button - shown when connected but getting permission errors */}
+                {isEbayConnected && (
+                  <button
+                    onClick={handleSetupEbayAccount}
+                    className="w-full py-2 px-4 bg-yellow-600 hover:bg-yellow-700 active:bg-yellow-800 text-white text-xs font-medium rounded-xl haptic-medium flex items-center justify-center space-x-2 transition-all duration-200"
+                  >
+                    <span>⚙️</span>
+                    <span>Setup eBay Account</span>
                   </button>
                 )}
 
