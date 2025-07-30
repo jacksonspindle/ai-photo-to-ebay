@@ -28,6 +28,18 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required parameters' })
     }
 
+    // Validate required fields
+    if (!listingData.title || listingData.title.length > 80) {
+      return res.status(400).json({ error: 'Title is required and must be 80 characters or less' })
+    }
+    
+    if (!listingData.description || listingData.description.length > 4000) {
+      return res.status(400).json({ error: 'Description is required and must be 4000 characters or less' })
+    }
+
+    // Ensure we have valid image URLs
+    const validImageUrls = Array.isArray(imageUrls) ? imageUrls.filter(url => url && url.startsWith('https://')) : []
+
     const sandbox = process.env.VITE_EBAY_SANDBOX === 'true'
     const EBAY_API_BASE = sandbox 
       ? 'https://api.sandbox.ebay.com'
@@ -45,11 +57,11 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         product: {
-          title: listingData.title,
-          description: listingData.description,
-          imageUrls: imageUrls,
-          condition: 'NEW'
+          title: listingData.title.substring(0, 80), // Ensure max 80 chars
+          description: listingData.description.substring(0, 4000), // Ensure max 4000 chars
+          imageUrls: validImageUrls
         },
+        condition: 'NEW',
         availability: {
           shipToLocationAvailability: {
             quantity: 1
