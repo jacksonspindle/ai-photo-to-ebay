@@ -33,9 +33,6 @@ export default async function handler(req, res) {
       ? 'https://api.sandbox.ebay.com/ws/api.dll'
       : 'https://api.ebay.com/ws/api.dll'
 
-    console.log('🛒 Creating eBay listing via Trading API...')
-    console.log('📋 Selected category:', listingData.category, '-> Category ID:', getCategoryId(listingData.category))
-
     // Helper function to get leaf category ID - using proper leaf categories
     const getCategoryId = (category) => {
       if (sandbox) {
@@ -68,6 +65,9 @@ export default async function handler(req, res) {
         return categoryMap[category] || '99'
       }
     }
+
+    console.log('🛒 Creating eBay listing via Trading API...')
+    console.log('📋 Selected category:', listingData.category, '-> Category ID:', getCategoryId(listingData.category))
 
     // Helper function to extract price
     const extractPrice = (priceString) => {
