@@ -17,7 +17,7 @@ const EBAY_SCOPES = 'https://api.ebay.com/oauth/api_scope'
  */
 export const getEbayAuthUrl = () => {
   const clientId = import.meta.env.VITE_EBAY_CLIENT_ID
-  const redirectUri = encodeURIComponent('http://localhost:5173/callback')
+  const redirectUri = encodeURIComponent(window.location.origin + '/callback')
   
   if (!clientId) {
     throw new Error('eBay Client ID not configured')
@@ -48,7 +48,7 @@ export const exchangeCodeForToken = async (authCode) => {
       },
       body: JSON.stringify({ 
         code: authCode,
-        redirectUri: 'http://localhost:5173/callback'
+        redirectUri: window.location.origin + '/callback'
       })
     })
 
